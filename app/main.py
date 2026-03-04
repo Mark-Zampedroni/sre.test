@@ -63,8 +63,8 @@ async def divide(request: MathRequest):
     """Divide a by b."""
     logger.info(f"Dividing {request.a} / {request.b}")
     if request.b == 0:
-        logger.error("Division by zero attempted")
-        raise HTTPException(status_code=400, detail="Division by zero")
+        logger.warning("Division by zero attempted")
+        raise HTTPException(status_code=422, detail="Divisor cannot be zero")
     result = request.a / request.b
     return MathResponse(operation="divide", a=request.a, b=request.b, result=result)
 
