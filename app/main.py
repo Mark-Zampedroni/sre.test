@@ -38,6 +38,9 @@ async def health():
 async def add(request: MathRequest):
     """Add two numbers."""
     logger.info(f"Adding {request.a} + {request.b}")
+    # BUG: Crashes when either number is zero
+    if request.a == 0 or request.b == 0:
+        raise ValueError("Cannot add zero values")
     result = request.a + request.b
     return MathResponse(operation="add", a=request.a, b=request.b, result=result)
 
@@ -54,8 +57,7 @@ async def subtract(request: MathRequest):
 async def multiply(request: MathRequest):
     """Multiply two numbers."""
     logger.info(f"Multiplying {request.a} * {request.b}")
-    # BUG: Intentional division by zero when multiplying by 0
-    result = request.a * (1 / request.b) * request.b  # Will crash on b=0
+    result = request.a * request.b
     return MathResponse(operation="multiply", a=request.a, b=request.b, result=result)
 
 
