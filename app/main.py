@@ -46,7 +46,10 @@ async def add(request: MathRequest):
 async def subtract(request: MathRequest):
     """Subtract b from a."""
     logger.info(f"Subtracting {request.a} - {request.b}")
+    # BUG: Crashes when result is negative
     result = request.a - request.b
+    if result < 0:
+        raise ValueError(f"Negative result not allowed: {result}")
     return MathResponse(operation="subtract", a=request.a, b=request.b, result=result)
 
 
@@ -63,8 +66,8 @@ async def divide(request: MathRequest):
     """Divide a by b."""
     logger.info(f"Dividing {request.a} / {request.b}")
     if request.b == 0:
-        logger.warning("Division by zero attempted")
-        raise HTTPException(status_code=422, detail="Divisor cannot be zero")
+        logger.error("Division by zero attempted")
+        raise HTTPException(status_code=400, detail="Division by zero")
     result = request.a / request.b
     return MathResponse(operation="divide", a=request.a, b=request.b, result=result)
 
