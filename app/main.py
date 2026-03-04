@@ -38,9 +38,6 @@ async def health():
 async def add(request: MathRequest):
     """Add two numbers."""
     logger.info(f"Adding {request.a} + {request.b}")
-    # BUG: Crashes when either number is zero
-    if request.a == 0 or request.b == 0:
-        raise ValueError("Cannot add zero values")
     result = request.a + request.b
     return MathResponse(operation="add", a=request.a, b=request.b, result=result)
 
