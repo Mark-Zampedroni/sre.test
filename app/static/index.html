@@ -1,0 +1,762 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ImageForge // Retro Processing Lab</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link href="https://fonts.googleapis.com/css2?family=VT323&family=Press+Start+2P&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --crt-green: #33ff33;
+            --crt-amber: #ffb000;
+            --crt-cyan: #00ffff;
+            --crt-magenta: #ff00ff;
+            --crt-bg: #0a0a0a;
+            --crt-dark: #050505;
+            --scanline-opacity: 0.08;
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        body {
+            font-family: 'VT323', monospace;
+            background: var(--crt-bg);
+            color: var(--crt-green);
+            min-height: 100vh;
+            overflow-x: hidden;
+        }
+
+        /* CRT Scanlines */
+        body::before {
+            content: "";
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: repeating-linear-gradient(
+                0deg,
+                rgba(0, 0, 0, var(--scanline-opacity)),
+                rgba(0, 0, 0, var(--scanline-opacity)) 1px,
+                transparent 1px,
+                transparent 2px
+            );
+            pointer-events: none;
+            z-index: 9999;
+        }
+
+        /* CRT Flicker */
+        @keyframes flicker {
+            0%, 100% { opacity: 1; }
+            92% { opacity: 1; }
+            93% { opacity: 0.8; }
+            94% { opacity: 1; }
+        }
+
+        .crt-container {
+            animation: flicker 0.15s infinite;
+            padding: 20px;
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+
+        /* Header */
+        header {
+            text-align: center;
+            padding: 30px 0;
+            border-bottom: 2px solid var(--crt-green);
+            margin-bottom: 30px;
+        }
+
+        h1 {
+            font-family: 'Press Start 2P', cursive;
+            font-size: 28px;
+            color: var(--crt-cyan);
+            text-shadow: 0 0 10px var(--crt-cyan), 0 0 20px var(--crt-cyan);
+            margin-bottom: 10px;
+        }
+
+        .subtitle {
+            font-size: 18px;
+            color: var(--crt-amber);
+        }
+
+        /* Main Layout */
+        .main-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 20px;
+        }
+
+        @media (max-width: 900px) {
+            .main-grid {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        /* Panels */
+        .panel {
+            background: var(--crt-dark);
+            border: 2px solid var(--crt-green);
+            padding: 20px;
+            position: relative;
+        }
+
+        .panel::before {
+            content: attr(data-title);
+            position: absolute;
+            top: -12px;
+            left: 15px;
+            background: var(--crt-bg);
+            padding: 0 10px;
+            font-family: 'Press Start 2P', cursive;
+            font-size: 10px;
+            color: var(--crt-amber);
+        }
+
+        /* Upload Zone */
+        .upload-zone {
+            border: 3px dashed var(--crt-green);
+            padding: 40px;
+            text-align: center;
+            cursor: pointer;
+            transition: all 0.3s;
+            margin-bottom: 20px;
+        }
+
+        .upload-zone:hover, .upload-zone.dragover {
+            background: rgba(51, 255, 51, 0.1);
+            border-color: var(--crt-cyan);
+            box-shadow: 0 0 20px rgba(51, 255, 51, 0.3);
+        }
+
+        .upload-zone .icon {
+            font-size: 48px;
+            margin-bottom: 15px;
+        }
+
+        .upload-zone p {
+            font-size: 20px;
+        }
+
+        .upload-zone small {
+            color: var(--crt-amber);
+            font-size: 14px;
+        }
+
+        #file-input {
+            display: none;
+        }
+
+        /* Preview */
+        .preview-container {
+            text-align: center;
+            min-height: 200px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background: rgba(0, 0, 0, 0.5);
+            border: 1px solid var(--crt-green);
+            margin-bottom: 15px;
+        }
+
+        .preview-container img {
+            max-width: 100%;
+            max-height: 300px;
+            image-rendering: pixelated;
+        }
+
+        .preview-placeholder {
+            color: #444;
+            font-size: 16px;
+        }
+
+        /* Operations */
+        .operations-grid {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 10px;
+            margin-bottom: 20px;
+        }
+
+        .op-btn {
+            font-family: 'VT323', monospace;
+            font-size: 16px;
+            padding: 12px;
+            background: transparent;
+            border: 2px solid var(--crt-green);
+            color: var(--crt-green);
+            cursor: pointer;
+            transition: all 0.2s;
+            text-transform: uppercase;
+        }
+
+        .op-btn:hover:not(:disabled) {
+            background: var(--crt-green);
+            color: var(--crt-bg);
+            box-shadow: 0 0 15px var(--crt-green);
+        }
+
+        .op-btn:disabled {
+            opacity: 0.3;
+            cursor: not-allowed;
+        }
+
+        .op-btn.active {
+            background: var(--crt-cyan);
+            color: var(--crt-bg);
+            border-color: var(--crt-cyan);
+        }
+
+        /* Sliders */
+        .param-group {
+            margin: 15px 0;
+            display: none;
+        }
+
+        .param-group.visible {
+            display: block;
+        }
+
+        .param-group label {
+            display: block;
+            margin-bottom: 5px;
+            color: var(--crt-amber);
+        }
+
+        input[type="range"] {
+            width: 100%;
+            height: 8px;
+            background: var(--crt-dark);
+            border: 1px solid var(--crt-green);
+            outline: none;
+            -webkit-appearance: none;
+        }
+
+        input[type="range"]::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            width: 20px;
+            height: 20px;
+            background: var(--crt-green);
+            cursor: pointer;
+        }
+
+        input[type="number"] {
+            font-family: 'VT323', monospace;
+            font-size: 18px;
+            width: 80px;
+            padding: 5px;
+            background: var(--crt-dark);
+            border: 1px solid var(--crt-green);
+            color: var(--crt-green);
+            text-align: center;
+        }
+
+        /* Execute Button */
+        .execute-btn {
+            font-family: 'Press Start 2P', cursive;
+            font-size: 14px;
+            width: 100%;
+            padding: 20px;
+            background: var(--crt-magenta);
+            border: none;
+            color: white;
+            cursor: pointer;
+            text-transform: uppercase;
+            transition: all 0.2s;
+            margin-top: 10px;
+        }
+
+        .execute-btn:hover:not(:disabled) {
+            box-shadow: 0 0 30px var(--crt-magenta);
+            transform: scale(1.02);
+        }
+
+        .execute-btn:disabled {
+            background: #333;
+            cursor: not-allowed;
+        }
+
+        /* Result Panel */
+        .result-container {
+            text-align: center;
+            min-height: 200px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background: rgba(0, 0, 0, 0.5);
+            border: 1px solid var(--crt-cyan);
+            margin-bottom: 15px;
+        }
+
+        .result-container img {
+            max-width: 100%;
+            max-height: 300px;
+        }
+
+        /* Download Button */
+        .download-btn {
+            font-family: 'VT323', monospace;
+            font-size: 20px;
+            width: 100%;
+            padding: 15px;
+            background: transparent;
+            border: 2px solid var(--crt-cyan);
+            color: var(--crt-cyan);
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .download-btn:hover:not(:disabled) {
+            background: var(--crt-cyan);
+            color: var(--crt-bg);
+            box-shadow: 0 0 20px var(--crt-cyan);
+        }
+
+        .download-btn:disabled {
+            opacity: 0.3;
+            cursor: not-allowed;
+        }
+
+        /* History */
+        .history-list {
+            max-height: 200px;
+            overflow-y: auto;
+            font-size: 14px;
+        }
+
+        .history-item {
+            padding: 8px;
+            border-bottom: 1px solid #222;
+            display: flex;
+            justify-content: space-between;
+        }
+
+        .history-item .op {
+            color: var(--crt-cyan);
+        }
+
+        .history-item .status {
+            color: var(--crt-green);
+        }
+
+        .history-item .status.failed {
+            color: #ff3333;
+        }
+
+        /* Stats Bar */
+        .stats-bar {
+            display: flex;
+            justify-content: space-around;
+            padding: 15px;
+            border-top: 2px solid var(--crt-green);
+            margin-top: 30px;
+            font-size: 16px;
+        }
+
+        .stat {
+            text-align: center;
+        }
+
+        .stat-value {
+            font-size: 24px;
+            color: var(--crt-cyan);
+            font-family: 'Press Start 2P', cursive;
+        }
+
+        .stat-label {
+            color: var(--crt-amber);
+            font-size: 12px;
+        }
+
+        /* Loading */
+        .loading {
+            display: none;
+        }
+
+        .loading.visible {
+            display: block;
+        }
+
+        @keyframes blink {
+            0%, 50% { opacity: 1; }
+            51%, 100% { opacity: 0; }
+        }
+
+        .loading-text {
+            animation: blink 1s infinite;
+            color: var(--crt-amber);
+            font-size: 18px;
+            text-align: center;
+            padding: 20px;
+        }
+
+        /* Terminal Log */
+        .terminal {
+            background: #000;
+            border: 1px solid var(--crt-green);
+            padding: 10px;
+            font-family: 'VT323', monospace;
+            font-size: 14px;
+            height: 150px;
+            overflow-y: auto;
+            margin-top: 20px;
+        }
+
+        .terminal-line {
+            margin: 2px 0;
+        }
+
+        .terminal-line.info { color: var(--crt-green); }
+        .terminal-line.warn { color: var(--crt-amber); }
+        .terminal-line.error { color: #ff3333; }
+        .terminal-line.success { color: var(--crt-cyan); }
+
+        /* Footer */
+        footer {
+            text-align: center;
+            padding: 20px;
+            color: #444;
+            font-size: 14px;
+        }
+    </style>
+</head>
+<body>
+    <div class="crt-container">
+        <header>
+            <h1>⚡ IMAGEFORGE ⚡</h1>
+            <p class="subtitle">[ RETRO PROCESSING LAB v1.0 ]</p>
+        </header>
+
+        <div class="main-grid">
+            <!-- Input Panel -->
+            <div class="panel" data-title="INPUT">
+                <div class="upload-zone" id="upload-zone">
+                    <div class="icon">📁</div>
+                    <p>DROP IMAGE HERE</p>
+                    <small>or click to browse // JPEG, PNG, WebP, GIF, TIFF</small>
+                </div>
+                <input type="file" id="file-input" accept="image/*">
+                
+                <div class="preview-container" id="preview-container">
+                    <span class="preview-placeholder">[ NO IMAGE LOADED ]</span>
+                </div>
+
+                <div id="image-info" style="text-align: center; color: var(--crt-amber); margin-bottom: 15px;"></div>
+
+                <div class="operations-grid">
+                    <button class="op-btn" data-op="resize">RESIZE</button>
+                    <button class="op-btn" data-op="rotate">ROTATE</button>
+                    <button class="op-btn" data-op="grayscale">GRAY</button>
+                    <button class="op-btn" data-op="blur">BLUR</button>
+                    <button class="op-btn" data-op="invert">INVERT</button>
+                    <button class="op-btn" data-op="sepia">SEPIA</button>
+                    <button class="op-btn" data-op="sharpen">SHARPEN</button>
+                    <button class="op-btn" data-op="edge_detect">EDGES</button>
+                    <button class="op-btn" data-op="thumbnail">THUMB</button>
+                </div>
+
+                <div class="param-group" id="param-resize">
+                    <label>WIDTH: <span id="width-val">800</span>px</label>
+                    <input type="range" id="width-slider" min="50" max="2000" value="800">
+                    <label>HEIGHT: <span id="height-val">600</span>px</label>
+                    <input type="range" id="height-slider" min="50" max="2000" value="600">
+                </div>
+
+                <div class="param-group" id="param-rotate">
+                    <label>ANGLE: <span id="angle-val">90</span>°</label>
+                    <input type="range" id="angle-slider" min="0" max="360" value="90">
+                </div>
+
+                <div class="param-group" id="param-blur">
+                    <label>RADIUS: <span id="blur-val">5</span>px</label>
+                    <input type="range" id="blur-slider" min="1" max="20" value="5">
+                </div>
+
+                <button class="execute-btn" id="execute-btn" disabled>
+                    ▶ EXECUTE TRANSFORM
+                </button>
+            </div>
+
+            <!-- Output Panel -->
+            <div class="panel" data-title="OUTPUT">
+                <div class="result-container" id="result-container">
+                    <span class="preview-placeholder">[ AWAITING TRANSFORM ]</span>
+                </div>
+
+                <div class="loading" id="loading">
+                    <div class="loading-text">■ PROCESSING... PLEASE WAIT ■</div>
+                </div>
+
+                <div id="result-info" style="text-align: center; color: var(--crt-cyan); margin-bottom: 15px;"></div>
+
+                <button class="download-btn" id="download-btn" disabled>
+                    💾 DOWNLOAD RESULT
+                </button>
+
+                <div class="terminal" id="terminal">
+                    <div class="terminal-line info">&gt; IMAGEFORGE INITIALIZED</div>
+                    <div class="terminal-line info">&gt; AWAITING INPUT...</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- History Panel -->
+        <div class="panel" data-title="HISTORY" style="margin-top: 20px;">
+            <div class="history-list" id="history-list">
+                <div style="text-align: center; color: #444; padding: 20px;">[ NO JOBS YET ]</div>
+            </div>
+        </div>
+
+        <!-- Stats Bar -->
+        <div class="stats-bar">
+            <div class="stat">
+                <div class="stat-value" id="stat-images">0</div>
+                <div class="stat-label">IMAGES</div>
+            </div>
+            <div class="stat">
+                <div class="stat-value" id="stat-jobs">0</div>
+                <div class="stat-label">JOBS</div>
+            </div>
+            <div class="stat">
+                <div class="stat-value" id="stat-memory">0</div>
+                <div class="stat-label">MB USED</div>
+            </div>
+        </div>
+
+        <footer>
+            IMAGEFORGE // POWERED BY FASTAPI + PILLOW // 2026
+        </footer>
+    </div>
+
+    <script>
+        // State
+        let currentImageId = null;
+        let currentResultId = null;
+        let selectedOperation = null;
+
+        // Elements
+        const uploadZone = document.getElementById('upload-zone');
+        const fileInput = document.getElementById('file-input');
+        const previewContainer = document.getElementById('preview-container');
+        const resultContainer = document.getElementById('result-container');
+        const executeBtn = document.getElementById('execute-btn');
+        const downloadBtn = document.getElementById('download-btn');
+        const terminal = document.getElementById('terminal');
+        const loading = document.getElementById('loading');
+
+        // Terminal logging
+        function log(message, type = 'info') {
+            const line = document.createElement('div');
+            line.className = `terminal-line ${type}`;
+            line.textContent = `> ${message}`;
+            terminal.appendChild(line);
+            terminal.scrollTop = terminal.scrollHeight;
+        }
+
+        // Upload handling
+        uploadZone.addEventListener('click', () => fileInput.click());
+        uploadZone.addEventListener('dragover', (e) => {
+            e.preventDefault();
+            uploadZone.classList.add('dragover');
+        });
+        uploadZone.addEventListener('dragleave', () => {
+            uploadZone.classList.remove('dragover');
+        });
+        uploadZone.addEventListener('drop', (e) => {
+            e.preventDefault();
+            uploadZone.classList.remove('dragover');
+            const files = e.dataTransfer.files;
+            if (files.length) handleFile(files[0]);
+        });
+        fileInput.addEventListener('change', (e) => {
+            if (e.target.files.length) handleFile(e.target.files[0]);
+        });
+
+        async function handleFile(file) {
+            log(`LOADING: ${file.name} (${(file.size / 1024).toFixed(1)} KB)`);
+            
+            const formData = new FormData();
+            formData.append('file', file);
+
+            try {
+                const response = await fetch('/api/upload', {
+                    method: 'POST',
+                    body: formData
+                });
+
+                if (!response.ok) {
+                    const error = await response.json();
+                    throw new Error(error.detail || 'Upload failed');
+                }
+
+                const data = await response.json();
+                currentImageId = data.image_id;
+                
+                // Show preview
+                previewContainer.innerHTML = `<img src="/api/image/${data.image_id}/preview" alt="Preview">`;
+                document.getElementById('image-info').textContent = 
+                    `${data.width}x${data.height} | ${data.format} | ${(data.size / 1024).toFixed(1)} KB`;
+                
+                log(`UPLOADED: ${data.image_id}`, 'success');
+                log(`DIMENSIONS: ${data.width}x${data.height}`);
+                
+                updateStats();
+                enableOperations();
+                
+            } catch (err) {
+                log(`ERROR: ${err.message}`, 'error');
+            }
+        }
+
+        // Operations
+        document.querySelectorAll('.op-btn').forEach(btn => {
+            btn.addEventListener('click', () => {
+                if (!currentImageId) return;
+                
+                // Toggle selection
+                document.querySelectorAll('.op-btn').forEach(b => b.classList.remove('active'));
+                btn.classList.add('active');
+                selectedOperation = btn.dataset.op;
+                
+                // Show relevant params
+                document.querySelectorAll('.param-group').forEach(p => p.classList.remove('visible'));
+                const paramGroup = document.getElementById(`param-${selectedOperation}`);
+                if (paramGroup) paramGroup.classList.add('visible');
+                
+                executeBtn.disabled = false;
+                log(`SELECTED: ${selectedOperation.toUpperCase()}`);
+            });
+        });
+
+        // Sliders
+        document.getElementById('width-slider').addEventListener('input', (e) => {
+            document.getElementById('width-val').textContent = e.target.value;
+        });
+        document.getElementById('height-slider').addEventListener('input', (e) => {
+            document.getElementById('height-val').textContent = e.target.value;
+        });
+        document.getElementById('angle-slider').addEventListener('input', (e) => {
+            document.getElementById('angle-val').textContent = e.target.value;
+        });
+        document.getElementById('blur-slider').addEventListener('input', (e) => {
+            document.getElementById('blur-val').textContent = e.target.value;
+        });
+
+        // Execute transform
+        executeBtn.addEventListener('click', async () => {
+            if (!currentImageId || !selectedOperation) return;
+            
+            const params = {
+                operation: selectedOperation
+            };
+
+            // Add operation-specific params
+            if (selectedOperation === 'resize') {
+                params.width = parseInt(document.getElementById('width-slider').value);
+                params.height = parseInt(document.getElementById('height-slider').value);
+            } else if (selectedOperation === 'rotate') {
+                params.angle = parseInt(document.getElementById('angle-slider').value);
+            } else if (selectedOperation === 'blur') {
+                params.blur_radius = parseInt(document.getElementById('blur-slider').value);
+            } else if (selectedOperation === 'thumbnail') {
+                params.width = 150;
+                params.height = 150;
+            }
+
+            log(`EXECUTING: ${selectedOperation.toUpperCase()}...`, 'warn');
+            loading.classList.add('visible');
+            executeBtn.disabled = true;
+
+            try {
+                const response = await fetch(`/api/transform/${currentImageId}`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(params)
+                });
+
+                if (!response.ok) {
+                    const error = await response.json();
+                    throw new Error(error.detail || 'Transform failed');
+                }
+
+                const data = await response.json();
+                currentResultId = data.result_id;
+
+                // Show result
+                resultContainer.innerHTML = `<img src="/api/image/${data.result_id}" alt="Result">`;
+                document.getElementById('result-info').textContent = 
+                    `${data.width}x${data.height} | ${(data.size / 1024).toFixed(1)} KB | ${data.duration_ms}ms`;
+
+                log(`COMPLETE: ${data.job_id}`, 'success');
+                log(`OUTPUT: ${data.width}x${data.height}, ${data.duration_ms}ms`);
+
+                downloadBtn.disabled = false;
+                updateStats();
+                updateHistory();
+
+            } catch (err) {
+                log(`ERROR: ${err.message}`, 'error');
+                resultContainer.innerHTML = `<span class="preview-placeholder" style="color: #ff3333;">[ ERROR ]</span>`;
+            } finally {
+                loading.classList.remove('visible');
+                executeBtn.disabled = false;
+            }
+        });
+
+        // Download
+        downloadBtn.addEventListener('click', () => {
+            if (currentResultId) {
+                window.open(`/api/image/${currentResultId}`, '_blank');
+                log('DOWNLOAD INITIATED');
+            }
+        });
+
+        function enableOperations() {
+            document.querySelectorAll('.op-btn').forEach(btn => btn.disabled = false);
+        }
+
+        async function updateStats() {
+            try {
+                const response = await fetch('/api/stats');
+                const data = await response.json();
+                document.getElementById('stat-images').textContent = data.images_stored;
+                document.getElementById('stat-jobs').textContent = data.jobs_processed;
+                document.getElementById('stat-memory').textContent = data.memory_usage_mb.toFixed(2);
+            } catch (err) {
+                console.error('Failed to update stats:', err);
+            }
+        }
+
+        async function updateHistory() {
+            try {
+                const response = await fetch('/api/history?limit=10');
+                const data = await response.json();
+                
+                if (data.jobs.length === 0) return;
+                
+                const historyList = document.getElementById('history-list');
+                historyList.innerHTML = data.jobs.map(job => `
+                    <div class="history-item">
+                        <span class="op">${job.operation.toUpperCase()}</span>
+                        <span class="status ${job.status}">${job.status.toUpperCase()}</span>
+                        <span>${job.duration_ms || 0}ms</span>
+                    </div>
+                `).join('');
+            } catch (err) {
+                console.error('Failed to update history:', err);
+            }
+        }
+
+        // Initial stats
+        updateStats();
+        updateHistory();
+        setInterval(updateStats, 5000);
+    </script>
+</body>
+</html>
