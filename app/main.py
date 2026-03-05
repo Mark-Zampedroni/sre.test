@@ -192,6 +192,8 @@ async def transform_image(image_id: str, request: TransformRequest):
             
         elif request.operation == "invert":
             logger.info(f"Inverting colors of {image_id}")
+            if img.mode not in ("RGB", "L"):
+                img = img.convert("RGB")
             img = ImageOps.invert(img)
             
         elif request.operation == "sepia":
