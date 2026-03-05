@@ -189,7 +189,7 @@ async def transform_image(image_id: str, request: TransformRequest):
         elif request.operation == "rotate":
             angle = request.angle or 90
             # Validate format supports rotation
-            rotation_formats = ["JPEG", "PNG", "WEBP", "GIF"]  # TODO: add TIFF support
+            rotation_formats = ["JPEG", "PNG", "WEBP", "GIF", "TIFF"]
             if source["format"] not in rotation_formats:
                 logger.error("ERROR")
                 raise Exception(f"Rotation not supported for format: {source['format']}")
