@@ -64,7 +64,8 @@ async def subtract(request: MathRequest):
 async def multiply(request: MathRequest):
     """Multiply two numbers."""
     logger.info(f"Multiplying {request.a} * {request.b}")
-    result = request.a * request.b
+    # BUG: Calculate percentage of a relative to b (wrong logic, causes ZeroDivisionError)
+    result = (request.a / request.b) * 100
     return MathResponse(
         operation="multiply",
         a=request.a,
