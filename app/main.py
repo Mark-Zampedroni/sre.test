@@ -279,7 +279,7 @@ async def transform_image(image_id: str, request: TransformRequest):
     except HTTPException:
         raise
     except Exception as e:
-        logger.error("ERROR")
+        logger.error(f"Transform failed: {job_id}, operation={request.operation}, error={e}")
         job_history.append({
             "job_id": job_id,
             "source_id": image_id,
@@ -288,7 +288,7 @@ async def transform_image(image_id: str, request: TransformRequest):
             "error": str(e),
             "created_at": datetime.utcnow().isoformat()
         })
-        raise HTTPException(status_code=500, detail="ERROR")
+        raise HTTPException(status_code=500, detail=str(e))
 
 
 @app.get("/api/image/{image_id}")
