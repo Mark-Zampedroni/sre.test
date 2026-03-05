@@ -44,7 +44,7 @@ job_history: list[dict] = []
 # Config
 MAX_IMAGE_SIZE = 10 * 1024 * 1024  # 10MB
 MAX_DIMENSION = 4096
-ALLOWED_FORMATS = {"JPEG", "PNG", "WEBP", "GIF"}
+ALLOWED_FORMATS = {"JPEG", "PNG", "WEBP", "GIF", "TIFF", "BMP"}
 
 
 class TransformRequest(BaseModel):
